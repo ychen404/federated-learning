@@ -5,7 +5,9 @@
 import argparse
 
 def args_parser():
+
     parser = argparse.ArgumentParser()
+
     # federated arguments
     parser.add_argument('--epochs', type=int, default=10, help="rounds of training")
     parser.add_argument('--num_users', type=int, default=100, help="number of users: K")
@@ -36,5 +38,32 @@ def args_parser():
     parser.add_argument('--stopping_rounds', type=int, default=10, help='rounds of early stopping')
     parser.add_argument('--verbose', action='store_true', help='verbose print')
     parser.add_argument('--seed', type=int, default=1, help='random seed (default: 1)')
+
+    
+    # rnn model arguments
+
+    parser.add_argument('--loc_emb_size', type=int, default=500, help="location embeddings size")
+    parser.add_argument('--uid_emb_size', type=int, default=40, help="user id embeddings size")
+    parser.add_argument('--voc_emb_size', type=int, default=50, help="words embeddings size")
+    parser.add_argument('--tim_emb_size', type=int, default=10, help="time embeddings size")
+    parser.add_argument('--hidden_size', type=int, default=500)
+    parser.add_argument('--dropout_p', type=float, default=0.3)
+    parser.add_argument('--data_name', type=str, default='foursquare_nyc_20000')
+    parser.add_argument('--learning_rate', type=float, default=5 * 1e-4)
+    parser.add_argument('--lr_step', type=int, default=2)
+    parser.add_argument('--lr_decay', type=float, default=0.1)
+    parser.add_argument('--optim', type=str, default='Adam', choices=['Adam', 'SGD'])
+    parser.add_argument('--L2', type=float, default=1 * 1e-5, help=" weight decay (L2 penalty)")
+    parser.add_argument('--clip', type=float, default=5.0)
+    parser.add_argument('--epoch_max', type=int, default=20)
+    parser.add_argument('--history_mode', type=str, default='avg', choices=['max', 'avg', 'whole'])
+    parser.add_argument('--rnn_type', type=str, default='LSTM', choices=['LSTM', 'GRU', 'RNN'])
+    parser.add_argument('--attn_type', type=str, default='dot', choices=['general', 'concat', 'dot'])
+    parser.add_argument('--data_path', type=str, default='/home/local/ASUAD/ychen404/Code/DeepMove_new/data/')
+    parser.add_argument('--save_path', type=str, default='/home/local/ASUAD/ychen404/Code/DeepMove_new/results/')
+    parser.add_argument('--model_mode', type=str, default='simple_long',
+                        choices=['simple', 'simple_long', 'attn_avg_long_user', 'attn_local_long'])
+    parser.add_argument('--pretrain', type=int, default=0)
+
     args = parser.parse_args()
     return args
