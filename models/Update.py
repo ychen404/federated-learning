@@ -114,7 +114,6 @@ class LocalUpdateRNN(object):
         self.selected_clients = []
     
 
-
     def generate_input_history(self, data_neural, mode, mode2=None, candidate=None):
         data_train = {}
         train_idx = {}
@@ -366,9 +365,16 @@ class LocalUpdateRNN(object):
             metrics['accuracy'].append(avg_acc)
             metrics['valid_acc'][epoch] = users_acc
 
-            save_name_tmp = 'ep_' + str(epoch) + '.m'
-            torch.save(net.state_dict(), SAVE_PATH + tmp_path + save_name_tmp)
 
+            save_name_tmp = 'ep_' + str(epoch) + '.m'
+            # print("SAVE_PATH: {}".format(SAVE_PATH))
+            # print("tmp_path: {}".format(tmp_path))
+            # print("save_name_tmp: {}".format(save_name_tmp))
+
+            if not os.path.exists(SAVE_PATH + tmp_path):
+                os.mkdir(SAVE_PATH + tmp_path)
+
+            torch.save(net.state_dict(), SAVE_PATH + tmp_path + save_name_tmp)
             scheduler.step(avg_acc)
             lr_last = lr
             lr = optimizer.param_groups[0]['lr']

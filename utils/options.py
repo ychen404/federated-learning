@@ -60,7 +60,7 @@ def args_parser():
     parser.add_argument('--rnn_type', type=str, default='LSTM', choices=['LSTM', 'GRU', 'RNN'])
     parser.add_argument('--attn_type', type=str, default='dot', choices=['general', 'concat', 'dot'])
     parser.add_argument('--data_path', type=str, default='/home/local/ASUAD/ychen404/Code/DeepMove_new/data/')
-    parser.add_argument('--save_path', type=str, default='/home/local/ASUAD/ychen404/Code/DeepMove_new/results/')
+    parser.add_argument('--save_path', type=str, default='results/')
     parser.add_argument('--model_mode', type=str, default='simple_long',
                         choices=['simple', 'simple_long', 'attn_avg_long_user', 'attn_local_long'])
     parser.add_argument('--pretrain', type=int, default=0)

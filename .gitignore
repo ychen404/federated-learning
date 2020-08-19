@@ -49,3 +49,5 @@ wheels/
 venv/
 ENV/
 
+.vscode/.ropeproject/config.py
+.vscode/.ropeproject/objectdb

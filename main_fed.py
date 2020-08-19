@@ -50,22 +50,26 @@ def run(args):
     print("m: {}".format(m))
     idxs_users = np.random.choice(range(args.num_users), m, replace=False)
     
+    for user in range(args.num_users):
     # create local replica
-    local = LocalUpdateRNN(args=args)
-
-    # w, loss = local.train(args, data_train, train_idx, data_test, test_idx, 'train', lr, parameters.clip, model, optimizer,
-    #                                 criterion, parameters.model_mode, net=copy.deepcopy(net_glob).to(args.device))
-    w, loss, avg_acc = local.train(args=args, net=copy.deepcopy(net_glob).to(args.device))
-    w_locals.append(copy.deepcopy(w))
-    loss_locals.append(copy.deepcopy(loss))
+        local = LocalUpdateRNN(args=args)
+        w, loss, avg_acc = local.train(args=args, net=copy.deepcopy(net_glob).to(args.device))
+        w_locals.append(copy.deepcopy(w))
+        loss_locals.append(copy.deepcopy(loss))
     # update global weights
+
+    print("Updating global weights")
     w_glob = FedAvg(w_locals)
 
     # copy weight to net_glob
     net_glob.load_state_dict(w_glob)
 
     # if args.pretrain == 0:
-    
+
+    # print loss
+    # loss_avg = sum(loss_locals) / len(loss_locals)
+    # print('Round {:3d}, Average loss {:.3f}'.format(iter, loss_avg))
+    # loss_train.append(loss_avg)
     return avg_acc
 
 
@@ -188,7 +192,34 @@ if __name__ == '__main__':
         # print("Testing accuracy: {:.2f}".format(acc_test))
     
     elif args.model == 'rnn':
-    #     print(args)
-        ours_acc = run(args)
+        # ours_acc = run(args)
+        # st = time.time()
+
+        loss_train = []
+
+        for iter in range(args.epochs):
+            w_locals, loss_locals = [], []
 
 
+            m = max(int(args.frac * args.num_users), 1)
+            print("m: {}".format(m))
+            idxs_users = np.random.choice(range(args.num_users), m, replace=False)
+            
+            for user in range(args.num_users):
+                # create local replica
+                local = LocalUpdateRNN(args=args)
+                w, loss, avg_acc = local.train(args=args, net=copy.deepcopy(net_glob).to(args.device))
+                w_locals.append(copy.deepcopy(w))
+                loss_locals.append(copy.deepcopy(loss))
+                # update global weights
+            print("Updating global weights")
+            w_glob = FedAvg(w_locals)
+
+            # copy weight to net_glob
+            net_glob.load_state_dict(w_glob)
+
+            # if args.pretrain == 0:
+            # print loss
+            loss_avg = sum(loss_locals) / len(loss_locals)
+            print('Round {:3d}, Average loss {:.3f}'.format(iter, loss_avg))
+            loss_train.append(loss_avg)
