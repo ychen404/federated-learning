@@ -367,10 +367,6 @@ class LocalUpdateRNN(object):
 
 
             save_name_tmp = 'ep_' + str(epoch) + '.m'
-            # print("SAVE_PATH: {}".format(SAVE_PATH))
-            # print("tmp_path: {}".format(tmp_path))
-            # print("save_name_tmp: {}".format(save_name_tmp))
-
             if not os.path.exists(SAVE_PATH + tmp_path):
                 os.mkdir(SAVE_PATH + tmp_path)
 
@@ -391,8 +387,8 @@ class LocalUpdateRNN(object):
                 break
             
         mid = np.argmax(metrics['accuracy'])
-        print(metrics['accuracy'])
-        print("mid: {}".format(mid))
+        # print(metrics['accuracy'])
+        # print("mid: {}".format(mid))
         
         avg_acc = metrics['accuracy'][mid]
         load_name_tmp = 'ep_' + str(mid) + '.m'

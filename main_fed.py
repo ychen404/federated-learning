@@ -47,11 +47,10 @@ def run(args):
     st = time.time()
     w_locals, loss_locals = [], []
     m = max(int(args.frac * args.num_users), 1)
-    print("m: {}".format(m))
     idxs_users = np.random.choice(range(args.num_users), m, replace=False)
     
     for user in range(args.num_users):
-    # create local replica
+        # create local replica
         local = LocalUpdateRNN(args=args)
         w, loss, avg_acc = local.train(args=args, net=copy.deepcopy(net_glob).to(args.device))
         w_locals.append(copy.deepcopy(w))
@@ -192,21 +191,18 @@ if __name__ == '__main__':
         # print("Testing accuracy: {:.2f}".format(acc_test))
     
     elif args.model == 'rnn':
-        # ours_acc = run(args)
-        # st = time.time()
 
         loss_train = []
-
         for iter in range(args.epochs):
             w_locals, loss_locals = [], []
-
-
             m = max(int(args.frac * args.num_users), 1)
-            print("m: {}".format(m))
             idxs_users = np.random.choice(range(args.num_users), m, replace=False)
             
             for user in range(args.num_users):
                 # create local replica
+                print(30*'*')
+                print("User = {}".format(user))
+                print(30*'*')
                 local = LocalUpdateRNN(args=args)
                 w, loss, avg_acc = local.train(args=args, net=copy.deepcopy(net_glob).to(args.device))
                 w_locals.append(copy.deepcopy(w))
@@ -221,5 +217,6 @@ if __name__ == '__main__':
             # if args.pretrain == 0:
             # print loss
             loss_avg = sum(loss_locals) / len(loss_locals)
+            print(30*'*')
             print('Round {:3d}, Average loss {:.3f}'.format(iter, loss_avg))
             loss_train.append(loss_avg)
