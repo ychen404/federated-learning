@@ -66,26 +66,40 @@ class LocalUpdate(object):
         return net.state_dict(), sum(epoch_loss) / len(epoch_loss)
 
 
-class RnnParameterData(object):
-    def __init__(self, loc_emb_size=500, uid_emb_size=40, voc_emb_size=50, tim_emb_size=10, hidden_size=500,
-                 lr=1e-3, lr_step=3, lr_decay=0.1, dropout_p=0.5, L2=1e-5, clip=5.0, optim='Adam',
-                 history_mode='avg', attn_type='dot', epoch_max=30, rnn_type='LSTM', model_mode="simple",
-                 data_path='../data/', save_path='../results/', data_name='foursquare', accuracy_mode='top1'):
+class RnnData(object):
+    def __init__(self, data_path='../data/', data_name='foursquare'):
         self.data_path = data_path
-        self.save_path = save_path
         self.data_name = data_name
-        # print(data_name)
 
         data = pickle.load(open(self.data_path + self.data_name + '.pk', 'rb'))
-        # data = pickle.load(open(self.data_path + self.data_name + '.pkl', 'rb'))
-        # print("The pickled data is {}".format(data))
+
         self.vid_list = data['vid_list']
         self.uid_list = data['uid_list']
         self.data_neural = data['data_neural']
-
-        self.tim_size = 48
+        
         self.loc_size = len(self.vid_list)
         self.uid_size = len(self.uid_list)
+
+class RnnParameter(object):
+    def __init__(self, loc_size, loc_emb_size=500, uid_emb_size=40, voc_emb_size=50, tim_emb_size=10, hidden_size=500,
+                 lr=1e-3, lr_step=3, lr_decay=0.1, dropout_p=0.5, L2=1e-5, clip=5.0, optim='Adam',
+                 history_mode='avg', attn_type='dot', epoch_max=30, rnn_type='LSTM', model_mode="simple",
+                 data_path='../data/', save_path='../results/', data_name='foursquare', accuracy_mode='top1'):
+
+        # self.data_path = data_path
+        self.save_path = save_path
+        # self.data_name = data_name
+        # print(data_name)
+
+        # data = pickle.load(open(self.data_path + self.data_name + '.pk', 'rb'))
+        # data = pickle.load(open(self.data_path + self.data_name + '.pkl', 'rb'))
+        # print("The pickled data is {}".format(data))
+        # self.vid_list = data['vid_list']
+        # self.uid_list = data['uid_list']
+        # self.data_neural = data['data_neural']
+        self.tim_size = 48
+        # self.loc_size = len(self.vid_list)
+        # self.uid_size = len(self.uid_list)
         self.loc_emb_size = loc_emb_size
         self.tim_emb_size = tim_emb_size
         self.voc_emb_size = voc_emb_size
@@ -112,86 +126,85 @@ class LocalUpdateRNN(object):
     def __init__(self, args):
         self.args = args
         self.selected_clients = []
-    
 
-    def generate_input_history(self, data_neural, mode, mode2=None, candidate=None):
-        data_train = {}
-        train_idx = {}
-        if candidate is None:
-            candidate = data_neural.keys()
-        for u in candidate:
-            sessions = data_neural[u]['sessions']
-            train_id = data_neural[u][mode]
-            data_train[u] = {}
-            for c, i in enumerate(train_id):
-                if mode == 'train' and c == 0:
-                    continue
-                session = sessions[i]
-                trace = {}
-                loc_np = np.reshape(np.array([s[0] for s in session[:-1]]), (len(session[:-1]), 1))
-                tim_np = np.reshape(np.array([s[1] for s in session[:-1]]), (len(session[:-1]), 1))
-                # voc_np = np.reshape(np.array([s[2] for s in session[:-1]]), (len(session[:-1]), 27))
-                target = np.array([s[0] for s in session[1:]])
-                trace['loc'] = Variable(torch.LongTensor(loc_np))
-                trace['target'] = Variable(torch.LongTensor(target))
-                trace['tim'] = Variable(torch.LongTensor(tim_np))
-                # trace['voc'] = Variable(torch.LongTensor(voc_np))
+    # def generate_input_history(self, data_neural, mode, mode2=None, candidate=None):
+    #     data_train = {}
+    #     train_idx = {}
+    #     if candidate is None:
+    #         candidate = data_neural.keys()
+    #     for u in candidate:
+    #         sessions = data_neural[u]['sessions']
+    #         train_id = data_neural[u][mode]
+    #         data_train[u] = {}
+    #         for c, i in enumerate(train_id):
+    #             if mode == 'train' and c == 0:
+    #                 continue
+    #             session = sessions[i]
+    #             trace = {}
+    #             loc_np = np.reshape(np.array([s[0] for s in session[:-1]]), (len(session[:-1]), 1))
+    #             tim_np = np.reshape(np.array([s[1] for s in session[:-1]]), (len(session[:-1]), 1))
+    #             # voc_np = np.reshape(np.array([s[2] for s in session[:-1]]), (len(session[:-1]), 27))
+    #             target = np.array([s[0] for s in session[1:]])
+    #             trace['loc'] = Variable(torch.LongTensor(loc_np))
+    #             trace['target'] = Variable(torch.LongTensor(target))
+    #             trace['tim'] = Variable(torch.LongTensor(tim_np))
+    #             # trace['voc'] = Variable(torch.LongTensor(voc_np))
 
-                history = []
-                if mode == 'test':
-                    test_id = data_neural[u]['train']
-                    for tt in test_id:
-                        history.extend([(s[0], s[1]) for s in sessions[tt]])
-                for j in range(c):
-                    history.extend([(s[0], s[1]) for s in sessions[train_id[j]]])
-                history = sorted(history, key=lambda x: x[1], reverse=False)
+    #             history = []
+    #             if mode == 'test':
+    #                 test_id = data_neural[u]['train']
+    #                 for tt in test_id:
+    #                     history.extend([(s[0], s[1]) for s in sessions[tt]])
+    #             for j in range(c):
+    #                 history.extend([(s[0], s[1]) for s in sessions[train_id[j]]])
+    #             history = sorted(history, key=lambda x: x[1], reverse=False)
 
-                # merge traces with same time stamp
-                if mode2 == 'max':
-                    history_tmp = {}
-                    for tr in history:
-                        if tr[1] not in history_tmp:
-                            history_tmp[tr[1]] = [tr[0]]
-                        else:
-                            history_tmp[tr[1]].append(tr[0])
-                    history_filter = []
-                    for t in history_tmp:
-                        if len(history_tmp[t]) == 1:
-                            history_filter.append((history_tmp[t][0], t))
-                        else:
-                            tmp = Counter(history_tmp[t]).most_common()
-                            if tmp[0][1] > 1:
-                                history_filter.append((history_tmp[t][0], t))
-                            else:
-                                ti = np.random.randint(len(tmp))
-                                history_filter.append((tmp[ti][0], t))
-                    history = history_filter
-                    history = sorted(history, key=lambda x: x[1], reverse=False)
-                elif mode2 == 'avg':
-                    history_tim = [t[1] for t in history]
-                    history_count = [1]
-                    last_t = history_tim[0]
-                    count = 1
-                    for t in history_tim[1:]:
-                        if t == last_t:
-                            count += 1
-                        else:
-                            history_count[-1] = count
-                            history_count.append(1)
-                            last_t = t
-                            count = 1
-                ################
+    #             # merge traces with same time stamp
+    #             if mode2 == 'max':
+    #                 history_tmp = {}
+    #                 for tr in history:
+    #                     if tr[1] not in history_tmp:
+    #                         history_tmp[tr[1]] = [tr[0]]
+    #                     else:
+    #                         history_tmp[tr[1]].append(tr[0])
+    #                 history_filter = []
+    #                 for t in history_tmp:
+    #                     if len(history_tmp[t]) == 1:
+    #                         history_filter.append((history_tmp[t][0], t))
+    #                     else:
+    #                         tmp = Counter(history_tmp[t]).most_common()
+    #                         if tmp[0][1] > 1:
+    #                             history_filter.append((history_tmp[t][0], t))
+    #                         else:
+    #                             ti = np.random.randint(len(tmp))
+    #                             history_filter.append((tmp[ti][0], t))
+    #                 history = history_filter
+    #                 history = sorted(history, key=lambda x: x[1], reverse=False)
+    #             elif mode2 == 'avg':
+    #                 history_tim = [t[1] for t in history]
+    #                 history_count = [1]
+    #                 last_t = history_tim[0]
+    #                 count = 1
+    #                 for t in history_tim[1:]:
+    #                     if t == last_t:
+    #                         count += 1
+    #                     else:
+    #                         history_count[-1] = count
+    #                         history_count.append(1)
+    #                         last_t = t
+    #                         count = 1
+    #             ################
 
-                history_loc = np.reshape(np.array([s[0] for s in history]), (len(history), 1))
-                history_tim = np.reshape(np.array([s[1] for s in history]), (len(history), 1))
-                trace['history_loc'] = Variable(torch.LongTensor(history_loc))
-                trace['history_tim'] = Variable(torch.LongTensor(history_tim))
-                if mode2 == 'avg':
-                    trace['history_count'] = history_count
+    #             history_loc = np.reshape(np.array([s[0] for s in history]), (len(history), 1))
+    #             history_tim = np.reshape(np.array([s[1] for s in history]), (len(history), 1))
+    #             trace['history_loc'] = Variable(torch.LongTensor(history_loc))
+    #             trace['history_tim'] = Variable(torch.LongTensor(history_tim))
+    #             if mode2 == 'avg':
+    #                 trace['history_count'] = history_count
 
-                data_train[u][i] = trace
-            train_idx[u] = train_id
-        return data_train, train_idx
+    #             data_train[u][i] = trace
+    #         train_idx[u] = train_id
+    #     return data_train, train_idx
 
 
     def generate_queue(self, train_idx, mode, mode2):
@@ -304,7 +317,7 @@ class LocalUpdateRNN(object):
             avg_acc = np.mean([users_rnn_acc[x] for x in users_rnn_acc])
             return avg_loss, avg_acc, users_rnn_acc
 
-    def train(self, args, net):
+    def train(self, args, net, parameters, training_data, training_idx, testing_data, testing_idx):
         
         # data_train, train_idx, data_test, test_idx, 
         #             mode, lr, clip, model, optimizer, criterion, mode2=None,
@@ -312,14 +325,15 @@ class LocalUpdateRNN(object):
         # Sets the module in training mode.        
         SAVE_PATH = args.save_path
         tmp_path = 'checkpoint/'
-        parameters = RnnParameterData(loc_emb_size=args.loc_emb_size, uid_emb_size=args.uid_emb_size,
-                                  voc_emb_size=args.voc_emb_size, tim_emb_size=args.tim_emb_size,
-                                  hidden_size=args.hidden_size, dropout_p=args.dropout_p,
-                                  data_name=args.data_name, lr=args.learning_rate,
-                                  lr_step=args.lr_step, lr_decay=args.lr_decay, L2=args.L2, rnn_type=args.rnn_type,
-                                  optim=args.optim, attn_type=args.attn_type,
-                                  clip=args.clip, epoch_max=args.epoch_max, history_mode=args.history_mode,
-                                  model_mode=args.model_mode, data_path=args.data_path, save_path=args.save_path)
+        # parameters = RnnParameter(loc_emb_size=args.loc_emb_size, uid_emb_size=args.uid_emb_size,
+        #                           voc_emb_size=args.voc_emb_size, tim_emb_size=args.tim_emb_size,
+        #                           hidden_size=args.hidden_size, dropout_p=args.dropout_p,
+        #                           data_name=args.data_name, lr=args.learning_rate,
+        #                           lr_step=args.lr_step, lr_decay=args.lr_decay, L2=args.L2, rnn_type=args.rnn_type,
+        #                           optim=args.optim, attn_type=args.attn_type,
+        #                           clip=args.clip, epoch_max=args.epoch_max, history_mode=args.history_mode,
+        #                           model_mode=args.model_mode, data_path=args.data_path, save_path=args.save_path)
+        
         argv = {'loc_emb_size': args.loc_emb_size, 'uid_emb_size': args.uid_emb_size, 'voc_emb_size': args.voc_emb_size,
             'tim_emb_size': args.tim_emb_size, 'hidden_size': args.hidden_size,
             'dropout_p': args.dropout_p, 'data_name': args.data_name, 'learning_rate': args.learning_rate,
@@ -327,12 +341,11 @@ class LocalUpdateRNN(object):
             'optim': args.optim, 'attn_type': args.attn_type, 'clip': args.clip, 'rnn_type': args.rnn_type,
             'epoch_max': args.epoch_max, 'history_mode': args.history_mode, 'model_mode': args.model_mode}
         print('*' * 15 + 'start training' + '*' * 15)
-        print('model_mode:{} history_mode:{} users:{}'.format(
-        parameters.model_mode, parameters.history_mode, parameters.uid_size))
+        print('model_mode:{} history_mode:{}'.format(parameters.model_mode, parameters.history_mode))
         net.train()
         
         metrics = {'train_loss': [], 'valid_loss': [], 'accuracy': [], 'valid_acc': {}}
-        candidate = parameters.data_neural.keys()
+        # candidate = parameters.data_neural.keys()
         lr = parameters.lr
 
         # train and update
@@ -344,20 +357,24 @@ class LocalUpdateRNN(object):
 
         # optimizer = torch.optim.SGD(net.parameters(), lr=self.args.lr, momentum=0.5)
 
+        # data_train, train_idx = self.generate_input_history(parameters.data_neural, 'train', mode2=parameters.history_mode,
+        #                                                candidate=candidate)
+        # data_test, test_idx = self.generate_input_history(parameters.data_neural, 'test', mode2=parameters.history_mode,
+        #                                              candidate=candidate)
 
-        data_train, train_idx = self.generate_input_history(parameters.data_neural, 'train', mode2=parameters.history_mode,
-                                                       candidate=candidate)
-        data_test, test_idx = self.generate_input_history(parameters.data_neural, 'test', mode2=parameters.history_mode,
-                                                     candidate=candidate)
+                    
 
         for epoch in range(parameters.epoch):
             st = time.time()
             if args.pretrain == 0:
-                _, avg_loss = self.run_rnn(net, data_train, train_idx, 'train', lr, parameters.clip, net, optimizer, criterion, parameters.model_mode)
+                # _, avg_loss = self.run_rnn(net, data_train, train_idx, 'train', lr, parameters.clip, net, optimizer, criterion, parameters.model_mode)
+                _, avg_loss = self.run_rnn(net, training_data, training_idx, 'train', lr, parameters.clip, net, optimizer, criterion, parameters.model_mode)
                 print('==>Train Epoch:{:0>2d} Loss:{:.4f} lr:{}'.format(epoch, avg_loss, lr))
                 metrics['train_loss'].append(avg_loss)
 
-            avg_loss, avg_acc, users_acc = self.run_rnn(net, data_test, test_idx, 'test', lr, parameters.clip, net,
+            # avg_loss, avg_acc, users_acc = self.run_rnn(net, data_test, test_idx, 'test', lr, parameters.clip, net,
+            #                                      optimizer, criterion, parameters.model_mode)
+            avg_loss, avg_acc, users_acc = self.run_rnn(net, testing_data, testing_idx, 'test', lr, parameters.clip, net,
                                                  optimizer, criterion, parameters.model_mode)
             print('==>Test Acc:{:.4f} Loss:{:.4f}'.format(avg_acc, avg_loss))
         

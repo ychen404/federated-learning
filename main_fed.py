@@ -15,11 +15,12 @@ import torch
 
 from utils.sampling import mnist_iid, mnist_noniid, cifar_iid
 from utils.options import args_parser
-from models.Update import LocalUpdate, LocalUpdateRNN
+from models.Update import LocalUpdate, LocalUpdateRNN, RnnParameter, RnnData
 from models.Nets import MLP, CNNMnist, CNNCifar, TrajPreSimple
 from models.Fed import FedAvg
 from models.test import test_img
-from train_simple import run_rnn, RnnParameterData, generate_input_history
+# from train_simple import run_rnn, RnnParameter, generate_input_history, RnnData
+from train_simple import run_rnn, generate_input_history
 
 import torch.nn as nn
 import torch.optim as optim
@@ -118,25 +119,43 @@ if __name__ == '__main__':
             len_in *= x
         net_glob = MLP(dim_in=len_in, dim_hidden=200, dim_out=args.num_classes).to(args.device)
     elif args.model == 'rnn':
-        parameters = RnnParameterData(loc_emb_size=args.loc_emb_size, uid_emb_size=args.uid_emb_size,
-                                  voc_emb_size=args.voc_emb_size, tim_emb_size=args.tim_emb_size,
-                                  hidden_size=args.hidden_size, dropout_p=args.dropout_p,
-                                  data_name=args.data_name, lr=args.learning_rate,
-                                  lr_step=args.lr_step, lr_decay=args.lr_decay, L2=args.L2, rnn_type=args.rnn_type,
-                                  optim=args.optim, attn_type=args.attn_type,
-                                  clip=args.clip, epoch_max=args.epoch_max, history_mode=args.history_mode,
-                                  model_mode=args.model_mode, data_path=args.data_path, save_path=args.save_path)
-        argv = {'loc_emb_size': args.loc_emb_size, 'uid_emb_size': args.uid_emb_size, 'voc_emb_size': args.voc_emb_size,
-            'tim_emb_size': args.tim_emb_size, 'hidden_size': args.hidden_size,
-            'dropout_p': args.dropout_p, 'data_name': args.data_name, 'learning_rate': args.learning_rate,
-            'lr_step': args.lr_step, 'lr_decay': args.lr_decay, 'L2': args.L2, 'act_type': 'selu',
-            'optim': args.optim, 'attn_type': args.attn_type, 'clip': args.clip, 'rnn_type': args.rnn_type,
-            'epoch_max': args.epoch_max, 'history_mode': args.history_mode, 'model_mode': args.model_mode}
-        print('*' * 15 + 'start training' + '*' * 15)
-        print('model_mode:{} history_mode:{} users:{}'.format(
-            parameters.model_mode, parameters.history_mode, parameters.uid_size))
+        # parameters = RnnParameterData(loc_emb_size=args.loc_emb_size, uid_emb_size=args.uid_emb_size,
+        #                           voc_emb_size=args.voc_emb_size, tim_emb_size=args.tim_emb_size,
+        #                           hidden_size=args.hidden_size, dropout_p=args.dropout_p,
+        #                           data_name=args.data_name, lr=args.learning_rate,
+        #                           lr_step=args.lr_step, lr_decay=args.lr_decay, L2=args.L2, rnn_type=args.rnn_type,
+        #                           optim=args.optim, attn_type=args.attn_type,
+        #                           clip=args.clip, epoch_max=args.epoch_max, history_mode=args.history_mode,
+        #                           model_mode=args.model_mode, data_path=args.data_path, save_path=args.save_path)    
         
-        net_glob = TrajPreSimple(parameters=parameters).cuda()
+        rnn_data_1 = RnnData(data_path="/home/local/ASUAD/ychen404/Code/DeepMove_new/data/", data_name="foursquare_nyc_20000_user_1")
+        rnn_data_2 = RnnData(data_path="/home/local/ASUAD/ychen404/Code/DeepMove_new/data/", data_name="foursquare_nyc_20000_user_1")
+        
+        # Loc_size depends on the dataset
+        parameters = RnnParameter(loc_size=rnn_data_1.loc_size, loc_emb_size=args.loc_emb_size, uid_emb_size=args.uid_emb_size,
+                                voc_emb_size=args.voc_emb_size, tim_emb_size=args.tim_emb_size,
+                                hidden_size=args.hidden_size, dropout_p=args.dropout_p,
+                                data_name=args.data_name, lr=args.learning_rate,
+                                lr_step=args.lr_step, lr_decay=args.lr_decay, L2=args.L2, rnn_type=args.rnn_type,
+                                optim=args.optim, attn_type=args.attn_type,
+                                clip=args.clip, epoch_max=args.epoch_max, history_mode=args.history_mode,
+                                model_mode=args.model_mode, save_path=args.save_path)
+    
+        argv = {'loc_emb_size': args.loc_emb_size, 'uid_emb_size': args.uid_emb_size, 'voc_emb_size': args.voc_emb_size,
+                'tim_emb_size': args.tim_emb_size, 'hidden_size': args.hidden_size,
+                'dropout_p': args.dropout_p, 'data_name': args.data_name, 'learning_rate': args.learning_rate,
+                'lr_step': args.lr_step, 'lr_decay': args.lr_decay, 'L2': args.L2, 'act_type': 'selu',
+                'optim': args.optim, 'attn_type': args.attn_type, 'clip': args.clip, 'rnn_type': args.rnn_type,
+                'epoch_max': args.epoch_max, 'history_mode': args.history_mode, 'model_mode': args.model_mode}
+
+        # Create training and testing data
+        
+        print('*' * 15 + 'start training' + '*' * 15)        
+        print('model_mode:{} history_mode:{}'.format(parameters.model_mode, parameters.history_mode))
+        # print('model_mode:{} history_mode:{} users:{}'.format(
+        #     parameters.model_mode, parameters.history_mode, parameters.uid_size))
+        
+        net_glob = TrajPreSimple(parameters=parameters, loc_size=rnn_data_1.loc_size).cuda()
     
     else:
         exit('Error: unrecognized model')
@@ -176,23 +195,30 @@ if __name__ == '__main__':
             loss_avg = sum(loss_locals) / len(loss_locals)
             print('Round {:3d}, Average loss {:.3f}'.format(iter, loss_avg))
             loss_train.append(loss_avg)
-
-        # plot loss curve
-        #    plt.figure()
-        #    plt.plot(range(len(loss_train)), loss_train)
-        #    plt.ylabel('train_loss')
-        #    plt.savefig('./save/fed_{}_{}_{}_C{}_iid{}.png'.format(args.dataset, args.model, args.epochs, args.frac, args.iid))
-
-        # testing
-        # net_glob.eval()
-        # acc_train, loss_train = test_img(net_glob, dataset_train, args)
-        # acc_test, loss_test = test_img(net_glob, dataset_test, args)
-        # print("Training accuracy: {:.2f}".format(acc_train))
-        # print("Testing accuracy: {:.2f}".format(acc_test))
     
     elif args.model == 'rnn':
 
-        loss_train = []
+        loss_train = []        
+
+        data_train, train_idx = [], []
+        data_test, test_idx = [], []
+        local = []
+         
+        for user in range(args.num_users):
+            print("user={}".format(user))
+            # local[user] = LocalUpdateRNN(args=args)
+            local.append(LocalUpdateRNN(args=args))
+            
+            data_train_tmp, train_idx_tmp = generate_input_history(rnn_data_1.data_neural, 'train', mode2=parameters.history_mode,
+                                                        candidate=rnn_data_1.data_neural.keys())
+            data_train.append(data_train_tmp)
+            train_idx.append(train_idx_tmp)
+            data_test_tmp, test_idx_tmp = generate_input_history(rnn_data_1.data_neural, 'test', mode2=parameters.history_mode,
+                                                        candidate=rnn_data_1.data_neural.keys())
+            data_test.append(data_test_tmp)
+            test_idx.append(test_idx_tmp)
+
+        print(local)
         for iter in range(args.epochs):
             w_locals, loss_locals = [], []
             m = max(int(args.frac * args.num_users), 1)
@@ -203,8 +229,8 @@ if __name__ == '__main__':
                 print(30*'*')
                 print("User = {}".format(user))
                 print(30*'*')
-                local = LocalUpdateRNN(args=args)
-                w, loss, avg_acc = local.train(args=args, net=copy.deepcopy(net_glob).to(args.device))
+                # local = LocalUpdateRNN(args=args)
+                w, loss, avg_acc = local[user].train(args, copy.deepcopy(net_glob).to(args.device), parameters, data_train[user], train_idx[user], data_test[user], test_idx[user])
                 w_locals.append(copy.deepcopy(w))
                 loss_locals.append(copy.deepcopy(loss))
                 # update global weights

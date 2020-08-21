@@ -74,9 +74,9 @@ class CNNCifar(nn.Module):
 class TrajPreSimple(nn.Module):
     """baseline rnn model"""
 
-    def __init__(self, parameters):
+    def __init__(self, parameters, loc_size):
         super(TrajPreSimple, self).__init__()
-        self.loc_size = parameters.loc_size
+        # self.loc_size = parameters.loc_size
         self.loc_emb_size = parameters.loc_emb_size
         self.tim_size = parameters.tim_size
         self.tim_emb_size = parameters.tim_emb_size
@@ -84,7 +84,8 @@ class TrajPreSimple(nn.Module):
         self.use_cuda = parameters.use_cuda
         self.rnn_type = parameters.rnn_type
 
-        self.emb_loc = nn.Embedding(self.loc_size, self.loc_emb_size)
+        # self.emb_loc = nn.Embedding(self.loc_size, self.loc_emb_size)
+        self.emb_loc = nn.Embedding(loc_size, self.loc_emb_size)
         self.emb_tim = nn.Embedding(self.tim_size, self.tim_emb_size)
 
         input_size = self.loc_emb_size + self.tim_emb_size
@@ -97,7 +98,7 @@ class TrajPreSimple(nn.Module):
             self.rnn = nn.RNN(input_size, self.hidden_size, 1)
         self.init_weights()
 
-        self.fc = nn.Linear(self.hidden_size, self.loc_size)
+        self.fc = nn.Linear(self.hidden_size, loc_size)
         self.dropout = nn.Dropout(p=parameters.dropout_p)
 
     def init_weights(self):
