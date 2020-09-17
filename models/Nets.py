@@ -86,6 +86,7 @@ class TrajPreSimple(nn.Module):
 
         # self.emb_loc = nn.Embedding(self.loc_size, self.loc_emb_size)
         self.emb_loc = nn.Embedding(loc_size, self.loc_emb_size)
+        print("emb_loc={}, loc_size={}, loc_emb_size={}".format(self.emb_loc, loc_size, self.loc_emb_size))
         self.emb_tim = nn.Embedding(self.tim_size, self.tim_emb_size)
 
         input_size = self.loc_emb_size + self.tim_emb_size
@@ -124,11 +125,8 @@ class TrajPreSimple(nn.Module):
             c1 = c1.cuda()
 
         loc_emb = self.emb_loc(loc)
-        # print("loc_emb.shape={}".format(loc_emb.shape))
         tim_emb = self.emb_tim(tim)
-        # print("tim_emb.shape={}".format(tim_emb.shape))
         x = torch.cat((loc_emb, tim_emb), 2)
-        # print("x.shape={}".format(x.shape))
         x = self.dropout(x)
 
         if self.rnn_type == 'GRU' or self.rnn_type == 'RNN':
@@ -140,10 +138,8 @@ class TrajPreSimple(nn.Module):
         out = self.dropout(out)
 
         y = self.fc(out)
-        # print("y.shape={}".format(y.shape))
         score = F.log_softmax(y)  # calculate loss by NLLoss
-        # print("score.shape={}".format(score.shape))
-        # print("The length of the score is {}".format(str(len(score))))
+
         return score
 
 

@@ -64,6 +64,8 @@ def args_parser():
     parser.add_argument('--model_mode', type=str, default='simple_long',
                         choices=['simple', 'simple_long', 'attn_avg_long_user', 'attn_local_long'])
     parser.add_argument('--pretrain', type=int, default=0)
+    parser.add_argument('--init', type=int, default=0)
+
 
     args = parser.parse_args()
     return args

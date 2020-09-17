@@ -19,7 +19,8 @@ import time
 import argparse
 import numpy as np
 from json import encoder
-import cPickle as pickle
+# import cPickle as pickle
+import pickle
 
 class DatasetSplit(Dataset):
     def __init__(self, dataset, idxs):
@@ -67,7 +68,7 @@ class LocalUpdate(object):
 
 
 class RnnData(object):
-    def __init__(self, data_path='../data/', data_name='foursquare'):
+    def __init__(self, data_path='../data/', data_name='pub_700'):
         self.data_path = data_path
         self.data_name = data_name
 
@@ -127,89 +128,9 @@ class LocalUpdateRNN(object):
         self.args = args
         self.selected_clients = []
 
-    # def generate_input_history(self, data_neural, mode, mode2=None, candidate=None):
-    #     data_train = {}
-    #     train_idx = {}
-    #     if candidate is None:
-    #         candidate = data_neural.keys()
-    #     for u in candidate:
-    #         sessions = data_neural[u]['sessions']
-    #         train_id = data_neural[u][mode]
-    #         data_train[u] = {}
-    #         for c, i in enumerate(train_id):
-    #             if mode == 'train' and c == 0:
-    #                 continue
-    #             session = sessions[i]
-    #             trace = {}
-    #             loc_np = np.reshape(np.array([s[0] for s in session[:-1]]), (len(session[:-1]), 1))
-    #             tim_np = np.reshape(np.array([s[1] for s in session[:-1]]), (len(session[:-1]), 1))
-    #             # voc_np = np.reshape(np.array([s[2] for s in session[:-1]]), (len(session[:-1]), 27))
-    #             target = np.array([s[0] for s in session[1:]])
-    #             trace['loc'] = Variable(torch.LongTensor(loc_np))
-    #             trace['target'] = Variable(torch.LongTensor(target))
-    #             trace['tim'] = Variable(torch.LongTensor(tim_np))
-    #             # trace['voc'] = Variable(torch.LongTensor(voc_np))
-
-    #             history = []
-    #             if mode == 'test':
-    #                 test_id = data_neural[u]['train']
-    #                 for tt in test_id:
-    #                     history.extend([(s[0], s[1]) for s in sessions[tt]])
-    #             for j in range(c):
-    #                 history.extend([(s[0], s[1]) for s in sessions[train_id[j]]])
-    #             history = sorted(history, key=lambda x: x[1], reverse=False)
-
-    #             # merge traces with same time stamp
-    #             if mode2 == 'max':
-    #                 history_tmp = {}
-    #                 for tr in history:
-    #                     if tr[1] not in history_tmp:
-    #                         history_tmp[tr[1]] = [tr[0]]
-    #                     else:
-    #                         history_tmp[tr[1]].append(tr[0])
-    #                 history_filter = []
-    #                 for t in history_tmp:
-    #                     if len(history_tmp[t]) == 1:
-    #                         history_filter.append((history_tmp[t][0], t))
-    #                     else:
-    #                         tmp = Counter(history_tmp[t]).most_common()
-    #                         if tmp[0][1] > 1:
-    #                             history_filter.append((history_tmp[t][0], t))
-    #                         else:
-    #                             ti = np.random.randint(len(tmp))
-    #                             history_filter.append((tmp[ti][0], t))
-    #                 history = history_filter
-    #                 history = sorted(history, key=lambda x: x[1], reverse=False)
-    #             elif mode2 == 'avg':
-    #                 history_tim = [t[1] for t in history]
-    #                 history_count = [1]
-    #                 last_t = history_tim[0]
-    #                 count = 1
-    #                 for t in history_tim[1:]:
-    #                     if t == last_t:
-    #                         count += 1
-    #                     else:
-    #                         history_count[-1] = count
-    #                         history_count.append(1)
-    #                         last_t = t
-    #                         count = 1
-    #             ################
-
-    #             history_loc = np.reshape(np.array([s[0] for s in history]), (len(history), 1))
-    #             history_tim = np.reshape(np.array([s[1] for s in history]), (len(history), 1))
-    #             trace['history_loc'] = Variable(torch.LongTensor(history_loc))
-    #             trace['history_tim'] = Variable(torch.LongTensor(history_tim))
-    #             if mode2 == 'avg':
-    #                 trace['history_count'] = history_count
-
-    #             data_train[u][i] = trace
-    #         train_idx[u] = train_id
-    #     return data_train, train_idx
-
-
     def generate_queue(self, train_idx, mode, mode2):
         """return a deque. You must use it by train_queue.popleft()"""
-        user = train_idx.keys()
+        user = list(train_idx.keys())
         train_queue = deque()
         if mode == 'random':
             initial_queue = {}
@@ -319,21 +240,10 @@ class LocalUpdateRNN(object):
 
     def train(self, args, net, parameters, training_data, training_idx, testing_data, testing_idx):
         
-        # data_train, train_idx, data_test, test_idx, 
-        #             mode, lr, clip, model, optimizer, criterion, mode2=None,
-        
         # Sets the module in training mode.        
         SAVE_PATH = args.save_path
         tmp_path = 'checkpoint/'
-        # parameters = RnnParameter(loc_emb_size=args.loc_emb_size, uid_emb_size=args.uid_emb_size,
-        #                           voc_emb_size=args.voc_emb_size, tim_emb_size=args.tim_emb_size,
-        #                           hidden_size=args.hidden_size, dropout_p=args.dropout_p,
-        #                           data_name=args.data_name, lr=args.learning_rate,
-        #                           lr_step=args.lr_step, lr_decay=args.lr_decay, L2=args.L2, rnn_type=args.rnn_type,
-        #                           optim=args.optim, attn_type=args.attn_type,
-        #                           clip=args.clip, epoch_max=args.epoch_max, history_mode=args.history_mode,
-        #                           model_mode=args.model_mode, data_path=args.data_path, save_path=args.save_path)
-        
+
         argv = {'loc_emb_size': args.loc_emb_size, 'uid_emb_size': args.uid_emb_size, 'voc_emb_size': args.voc_emb_size,
             'tim_emb_size': args.tim_emb_size, 'hidden_size': args.hidden_size,
             'dropout_p': args.dropout_p, 'data_name': args.data_name, 'learning_rate': args.learning_rate,
@@ -345,24 +255,15 @@ class LocalUpdateRNN(object):
         net.train()
         
         metrics = {'train_loss': [], 'valid_loss': [], 'accuracy': [], 'valid_acc': {}}
-        # candidate = parameters.data_neural.keys()
+        
         lr = parameters.lr
-
+        
         # train and update
         criterion = nn.NLLLoss().cuda()
         optimizer = optim.Adam(filter(lambda p: p.requires_grad, net.parameters()), lr=parameters.lr,
                            weight_decay=parameters.L2)
         scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'max', patience=parameters.lr_step,
                             factor=parameters.lr_decay, threshold=1e-3)
-
-        # optimizer = torch.optim.SGD(net.parameters(), lr=self.args.lr, momentum=0.5)
-
-        # data_train, train_idx = self.generate_input_history(parameters.data_neural, 'train', mode2=parameters.history_mode,
-        #                                                candidate=candidate)
-        # data_test, test_idx = self.generate_input_history(parameters.data_neural, 'test', mode2=parameters.history_mode,
-        #                                              candidate=candidate)
-
-                    
 
         for epoch in range(parameters.epoch):
             st = time.time()

@@ -6,8 +6,8 @@ import torch
 from torch.autograd import Variable
 
 import numpy as np
-import cPickle as pickle
-# import pickle as pickle
+# import cPickle as pickle
+import pickle
 from collections import deque, Counter
 import pdb
 
