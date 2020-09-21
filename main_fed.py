@@ -16,8 +16,8 @@ from models.Update import LocalUpdate, LocalUpdateRNN, RnnParameter, RnnData
 from models.Nets import MLP, CNNMnist, CNNCifar, TrajPreSimple
 from models.Fed import FedAvg
 from models.test import test_img
-# from train_simple import run_rnn, RnnParameter, generate_input_history, RnnData
-from train_simple import run_rnn, generate_input_history
+# from train_simple import run_rnn, generate_input_history
+from train_simple import generate_input_history
 
 import torch.nn as nn
 import torch.optim as optim
@@ -83,15 +83,17 @@ elif args.model == 'mlp':
     for x in img_size:
         len_in *= x
     net_glob = MLP(dim_in=len_in, dim_hidden=200, dim_out=args.num_classes).to(args.device)
+
 elif args.model == 'rnn':
-    
-    rnn_data_1 = RnnData(data_path="/home/local/ASUAD/ychen404/Code/DeepMove_new/data/",  
-                                                data_name="private_186")
-    rnn_data_2 = RnnData(data_path="/home/local/ASUAD/ychen404/Code/DeepMove_new/data/", 
-                                                data_name="private_186")
-    
+    rnn_data = []
+    for user in range(args.num_users):
+        data_name = "tweets-cikm-uid-" + str(user)
+        # print(data_name)
+        rnn_data.append(RnnData(data_path="/home/local/ASUAD/ychen404/Code/DeepMove_new/data/", data_name=data_name))
+
     # Calculate the maximum loc_size between workers
-    max_loc_size = max(rnn_data_1.loc_size, rnn_data_2.loc_size)
+    max_loc_size = max(rnn_data[0].loc_size, rnn_data[1].loc_size)
+    # max_loc_size = max(rnn_data_1.loc_size, rnn_data_2.loc_size)
     print("Max_loc_size: {}".format(max_loc_size))
 
     # Loc_size depends on the dataset
@@ -102,7 +104,7 @@ elif args.model == 'rnn':
                             lr_step=args.lr_step, lr_decay=args.lr_decay, L2=args.L2, rnn_type=args.rnn_type,
                             optim=args.optim, attn_type=args.attn_type,
                             clip=args.clip, epoch_max=args.epoch_max, history_mode=args.history_mode,
-                            model_mode=args.model_mode, save_path=args.save_path)
+                            model_mode=args.model_mode, save_path=args.save_path, accuracy_mode=args.accuracy_mode)
 
     argv = {'loc_emb_size': args.loc_emb_size, 'uid_emb_size': args.uid_emb_size, 'voc_emb_size': args.voc_emb_size,
             'tim_emb_size': args.tim_emb_size, 'hidden_size': args.hidden_size,
@@ -113,7 +115,7 @@ elif args.model == 'rnn':
 
     # Create training and testing data
     
-    print('*' * 15 + 'start training' + '*' * 15)        
+    print('*' * 15 + 'start training' + '*' * 15)
     print('model_mode:{} history_mode:{}'.format(parameters.model_mode, parameters.history_mode))
     # print('model_mode:{} history_mode:{} users:{}'.format(
     #     parameters.model_mode, parameters.history_mode, parameters.uid_size))
@@ -152,22 +154,26 @@ elif args.model == 'rnn':
         
     for user in range(args.num_users):
         print("user={}".format(user))
-
+        # exit()
         local.append(LocalUpdateRNN(args=args))           
-        data_train_tmp, train_idx_tmp = generate_input_history(rnn_data_1.data_neural, 'train', mode2=parameters.history_mode,
-                                                    candidate=rnn_data_1.data_neural.keys())
+        
+        
+        data_train_tmp, train_idx_tmp = generate_input_history(rnn_data[user].data_neural, 'train', mode2=parameters.history_mode,
+                                                    candidate=rnn_data[user].data_neural.keys())
         data_train.append(data_train_tmp)
         train_idx.append(train_idx_tmp)
-        data_test_tmp, test_idx_tmp = generate_input_history(rnn_data_1.data_neural, 'test', mode2=parameters.history_mode,
-                                                    candidate=rnn_data_1.data_neural.keys())
+        
+        data_test_tmp, test_idx_tmp = generate_input_history(rnn_data[user].data_neural, 'test', mode2=parameters.history_mode,
+                                                    candidate=rnn_data[user].data_neural.keys())
         data_test.append(data_test_tmp)
         test_idx.append(test_idx_tmp)
 
-    print(local)
-    for iter in range(args.epochs):
+    # print(local)
+    for iter in range(args.rounds):
         w_locals, loss_locals = [], []
         m = max(int(args.frac * args.num_users), 1)
         idxs_users = np.random.choice(range(args.num_users), m, replace=False)
+        global_accuracy = []
         
         for user in range(args.num_users):
             # create local replica
@@ -178,7 +184,13 @@ elif args.model == 'rnn':
             w, loss, avg_acc = local[user].train(args, copy.deepcopy(net_glob).to(args.device), parameters, data_train[user], train_idx[user], data_test[user], test_idx[user])
             w_locals.append(copy.deepcopy(w))
             loss_locals.append(copy.deepcopy(loss))
+            global_accuracy.append(avg_acc)
             # update global weights
+        
+        # calculate the average global accuracy
+        avg_global_accuracy = np.average(global_accuracy)
+        # print("The avg_global_accuray is {}".format(avg_global_accuracy))
+
         print("Updating global weights")
         w_glob = FedAvg(w_locals)
 
@@ -188,5 +200,5 @@ elif args.model == 'rnn':
         # print loss
         loss_avg = sum(loss_locals) / len(loss_locals)
         print(30*'*')
-        print('Round {:3d}, Average loss {:.3f}'.format(iter, loss_avg))
+        print('Round {:3d}, Average loss {:.3f}, Average accuracy {:.3f}'.format(iter, loss_avg, avg_global_accuracy))
         loss_train.append(loss_avg)

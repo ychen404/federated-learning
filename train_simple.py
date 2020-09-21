@@ -17,7 +17,7 @@ class RnnParameterData(object):
                  lr=1e-3, lr_step=3, lr_decay=0.1, dropout_p=0.5, L2=1e-5, clip=5.0, optim='Adam',
                  history_mode='avg', attn_type='dot', epoch_max=30, rnn_type='LSTM', model_mode="simple",
                  data_path='/home/local/ASUAD/ychen404/Code/DeepMove_new/data/', save_path='../results/', 
-                data_name='foursquare_nyc_20000'):
+                data_name='foursquare_nyc_20000', accuracy_mode='top1'):
         self.data_path = data_path
         self.save_path = save_path
         self.data_name = data_name
@@ -53,6 +53,7 @@ class RnnParameterData(object):
         self.rnn_type = rnn_type
         self.history_mode = history_mode
         self.model_mode = model_mode
+        self.accuracy_mode = accuracy_mode
 
 
 def generate_input_history(data_neural, mode, mode2=None, candidate=None):
@@ -179,7 +180,7 @@ def get_acc(target, scores):
             acc[2] += 1
     return acc
 
-def run_rnn(data, run_idx, mode, lr, clip, model, optimizer, criterion, mode2=None):
+def run_rnn(data, run_idx, mode, accuracy_mode, lr, clip, model, optimizer, criterion, mode2=None):
     """mode=train: return model, avg_loss
        mode=test: return avg_loss,avg_acc,users_rnn_acc"""
     run_queue = None
@@ -224,8 +225,10 @@ def run_rnn(data, run_idx, mode, lr, clip, model, optimizer, criterion, mode2=No
         elif mode == 'test':
             users_acc[u][0] += len(target)
             acc = get_acc(target, scores)
-            users_acc[u][1] += acc[1]
-            # users_acc[u][1] += acc[2]
+            if accuracy_mode == 'top5':
+                users_acc[u][1] += acc[1]
+            elif accuracy_mode == 'top1':
+                users_acc[u][1] += acc[2]
 
         # print(loss.data.cpu().numpy().size())
         # print(loss.item())

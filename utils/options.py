@@ -9,7 +9,7 @@ def args_parser():
     parser = argparse.ArgumentParser()
 
     # federated arguments
-    parser.add_argument('--epochs', type=int, default=10, help="rounds of training")
+    parser.add_argument('--rounds', type=int, default=10, help="rounds of training")
     parser.add_argument('--num_users', type=int, default=100, help="number of users: K")
     parser.add_argument('--frac', type=float, default=0.1, help="the fraction of clients: C")
     parser.add_argument('--local_ep', type=int, default=5, help="the number of local epochs: E")
@@ -61,10 +61,11 @@ def args_parser():
     parser.add_argument('--attn_type', type=str, default='dot', choices=['general', 'concat', 'dot'])
     parser.add_argument('--data_path', type=str, default='/home/local/ASUAD/ychen404/Code/DeepMove_new/data/')
     parser.add_argument('--save_path', type=str, default='results/')
-    parser.add_argument('--model_mode', type=str, default='simple_long',
+    parser.add_argument('--model_mode', type=str, default='simple',
                         choices=['simple', 'simple_long', 'attn_avg_long_user', 'attn_local_long'])
     parser.add_argument('--pretrain', type=int, default=0)
     parser.add_argument('--init', type=int, default=0)
+    parser.add_argument('--accuracy_mode', type=str, default='top1')
 
 
     args = parser.parse_args()

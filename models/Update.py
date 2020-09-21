@@ -173,7 +173,7 @@ class LocalUpdateRNN(object):
                 acc[2] += 1
         return acc
 
-    def run_rnn(self, net, data, run_idx, mode, lr, clip, model, optimizer, criterion, mode2=None):
+    def run_rnn(self, net, data, run_idx, mode, lr, clip, model, optimizer, criterion, mode2=None, accuracy_mode='top1'):
         """mode=train: return model, avg_loss
         mode=test: return avg_loss,avg_acc,users_rnn_acc"""
         
@@ -219,8 +219,11 @@ class LocalUpdateRNN(object):
             elif mode == 'test':
                 users_acc[u][0] += len(target)
                 acc = self.get_acc(target, scores)
-                users_acc[u][1] += acc[1]
-                # users_acc[u][1] += acc[2]
+
+                if accuracy_mode == 'top5':
+                    users_acc[u][1] += acc[1]   
+                elif accuracy_mode == 'top1':
+                    users_acc[u][1] += acc[2]
 
             # fixed indices problem
             total_loss.append(loss.data.cpu().numpy())
