@@ -4,9 +4,7 @@ from __future__ import division
 
 import torch
 from torch.autograd import Variable
-
 import numpy as np
-# import cPickle as pickle
 import pickle
 from collections import deque, Counter
 import pdb
@@ -21,11 +19,8 @@ class RnnParameterData(object):
         self.data_path = data_path
         self.save_path = save_path
         self.data_name = data_name
-        # print(data_name)
 
         data = pickle.load(open(self.data_path + self.data_name + '.pk', 'rb'))
-        # data = pickle.load(open(self.data_path + self.data_name + '.pkl', 'rb'))
-        # print("The pickled data is {}".format(data))
         self.vid_list = data['vid_list']
         self.uid_list = data['uid_list']
         self.data_neural = data['data_neural']
@@ -87,7 +82,7 @@ def generate_input_history(data_neural, mode, mode2=None, candidate=None):
             for j in range(c):
                 history.extend([(s[0], s[1]) for s in sessions[train_id[j]]])
             history = sorted(history, key=lambda x: x[1], reverse=False)
-
+            
             # merge traces with same time stamp
             if mode2 == 'max':
                 history_tmp = {}
@@ -112,6 +107,7 @@ def generate_input_history(data_neural, mode, mode2=None, candidate=None):
             elif mode2 == 'avg':
                 history_tim = [t[1] for t in history]
                 history_count = [1]
+                # pdb.set_trace()
                 last_t = history_tim[0]
                 count = 1
                 for t in history_tim[1:]:
@@ -131,6 +127,92 @@ def generate_input_history(data_neural, mode, mode2=None, candidate=None):
             if mode2 == 'avg':
                 trace['history_count'] = history_count
 
+            data_train[u][i] = trace
+        train_idx[u] = train_id
+    return data_train, train_idx
+
+def generate_input_long_history2(data_neural, mode, candidate=None):
+    data_train = {}
+    train_idx = {}
+    if candidate is None:
+        candidate = data_neural.keys()
+    for u in candidate:
+        sessions = data_neural[u]['sessions']
+        train_id = data_neural[u][mode]
+        data_train[u] = {}
+
+        trace = {}
+        session = []
+        for c, i in enumerate(train_id):
+            session.extend(sessions[i])
+        target = np.array([s[0] for s in session[1:]])
+
+        loc_tim = []
+        loc_tim.extend([(s[0], s[1]) for s in session[:-1]])
+        loc_np = np.reshape(np.array([s[0] for s in loc_tim]), (len(loc_tim), 1))
+        tim_np = np.reshape(np.array([s[1] for s in loc_tim]), (len(loc_tim), 1))
+        trace['loc'] = Variable(torch.LongTensor(loc_np))
+        trace['tim'] = Variable(torch.LongTensor(tim_np))
+        trace['target'] = Variable(torch.LongTensor(target))
+        data_train[u][i] = trace
+        # train_idx[u] = train_id
+        if mode == 'train':
+            train_idx[u] = [0, i]
+        else:
+            train_idx[u] = [i]
+    return data_train, train_idx
+
+def generate_input_long_history(data_neural, mode, candidate=None):
+    data_train = {}
+    train_idx = {}
+    if candidate is None:
+        candidate = data_neural.keys()
+    for u in candidate:
+        sessions = data_neural[u]['sessions']
+        train_id = data_neural[u][mode]
+        # pdb.set_trace()
+        data_train[u] = {}
+        for c, i in enumerate(train_id):
+            trace = {}
+            if mode == 'train' and c == 0:
+                continue
+            session = sessions[i]
+            target = np.array([s[0] for s in session[1:]])
+
+            history = []
+            if mode == 'test':
+                test_id = data_neural[u]['train']
+                for tt in test_id:
+                    history.extend([(s[0], s[1]) for s in sessions[tt]])
+            for j in range(c):
+                history.extend([(s[0], s[1]) for s in sessions[train_id[j]]])
+
+            history_tim = [t[1] for t in history]
+            history_count = [1]
+            last_t = history_tim[0]
+            count = 1
+            for t in history_tim[1:]:
+                if t == last_t:
+                    count += 1
+                else:
+                    history_count[-1] = count
+                    history_count.append(1)
+                    last_t = t
+                    count = 1
+
+            history_loc = np.reshape(np.array([s[0] for s in history]), (len(history), 1))
+            history_tim = np.reshape(np.array([s[1] for s in history]), (len(history), 1))
+            trace['history_loc'] = Variable(torch.LongTensor(history_loc))
+            trace['history_tim'] = Variable(torch.LongTensor(history_tim))
+            trace['history_count'] = history_count
+
+            loc_tim = history
+            loc_tim.extend([(s[0], s[1]) for s in session[:-1]])
+            loc_np = np.reshape(np.array([s[0] for s in loc_tim]), (len(loc_tim), 1))
+            tim_np = np.reshape(np.array([s[1] for s in loc_tim]), (len(loc_tim), 1))
+            trace['loc'] = Variable(torch.LongTensor(loc_np))
+            trace['tim'] = Variable(torch.LongTensor(tim_np))
+            trace['target'] = Variable(torch.LongTensor(target))
             data_train[u][i] = trace
         train_idx[u] = train_id
     return data_train, train_idx
@@ -244,10 +326,6 @@ def run_rnn(data, run_idx, mode, accuracy_mode, lr, clip, model, optimizer, crit
         users_rnn_acc = {}
         for u in users_acc:
             tmp_acc = users_acc[u][1] / users_acc[u][0]
-            # print("users_acc: {}".format(users_acc))
-            # print("users_acc[u][1]: {}".format(users_acc[u][1]))
-            # print("users_acc[u][0]: {}".format(users_acc[u][0]))
             users_rnn_acc[u] = tmp_acc.tolist()[0]
-            # print("users_rnn_acc[u]: {}".format(users_rnn_acc[u]))
         avg_acc = np.mean([users_rnn_acc[x] for x in users_rnn_acc])
         return avg_loss, avg_acc, users_rnn_acc

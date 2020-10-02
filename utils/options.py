@@ -62,10 +62,13 @@ def args_parser():
     parser.add_argument('--data_path', type=str, default='/home/local/ASUAD/ychen404/Code/DeepMove_new/data/')
     parser.add_argument('--save_path', type=str, default='results/')
     parser.add_argument('--model_mode', type=str, default='simple',
-                        choices=['simple', 'simple_long', 'attn_avg_long_user', 'attn_local_long'])
+                        # choices=['simple', 'simple_long', 'attn_avg_long_user', 'attn_local_long'])
+                        # Only support the following two models currently
+                        choices=['simple', 'attn_local_long'])
     parser.add_argument('--pretrain', type=int, default=0)
     parser.add_argument('--init', type=int, default=0)
     parser.add_argument('--accuracy_mode', type=str, default='top1')
+    parser.add_argument('--print_local', type=int, default=1)
 
 
     args = parser.parse_args()

@@ -72,7 +72,7 @@ class RnnData(object):
         self.data_path = data_path
         self.data_name = data_name
 
-        data = pickle.load(open(self.data_path + self.data_name + '.pk', 'rb'))
+        data = pickle.load(open(self.data_path + self.data_name, 'rb'))
 
         self.vid_list = data['vid_list']
         self.uid_list = data['uid_list']
@@ -85,19 +85,11 @@ class RnnParameter(object):
     def __init__(self, loc_size, loc_emb_size=500, uid_emb_size=40, voc_emb_size=50, tim_emb_size=10, hidden_size=500,
                  lr=1e-3, lr_step=3, lr_decay=0.1, dropout_p=0.5, L2=1e-5, clip=5.0, optim='Adam',
                  history_mode='avg', attn_type='dot', epoch_max=30, rnn_type='LSTM', model_mode="simple",
-                 data_path='../data/', save_path='../results/', data_name='foursquare', accuracy_mode='top1'):
+                 data_path='../data/', save_path='../results/', data_name='foursquare', accuracy_mode='top1', print_local=True):
 
         # self.data_path = data_path
         self.save_path = save_path
-        # self.data_name = data_name
-        # print(data_name)
 
-        # data = pickle.load(open(self.data_path + self.data_name + '.pk', 'rb'))
-        # data = pickle.load(open(self.data_path + self.data_name + '.pkl', 'rb'))
-        # print("The pickled data is {}".format(data))
-        # self.vid_list = data['vid_list']
-        # self.uid_list = data['uid_list']
-        # self.data_neural = data['data_neural']
         self.tim_size = 48
         # self.loc_size = len(self.vid_list)
         # self.uid_size = len(self.uid_list)
@@ -163,7 +155,6 @@ class LocalUpdateRNN(object):
     
         acc = np.zeros((3, 1))
         for i, p in enumerate(predx):
-            # pdb.set_trace()
             t = target[i]
             if t in p[:10] and t > 0:
                 acc[0] += 1
@@ -198,8 +189,11 @@ class LocalUpdateRNN(object):
             target = data[u][i]['target'].cuda()
             uid = Variable(torch.LongTensor([u])).cuda()
 
-            # if mode2 in ['simple', 'simple_long']:
-            scores = model(loc, tim)
+            if mode2 in ['simple', 'simple_long']:
+                scores = model(loc, tim)
+            elif mode2 == 'attn_local_long':
+                target_len = target.data.size()[0]
+                scores = model(loc, tim, target_len)
             
             if scores.data.size()[0] > target.data.size()[0]:
                 scores = scores[-target.data.size()[0]:]
@@ -253,8 +247,11 @@ class LocalUpdateRNN(object):
             'lr_step': args.lr_step, 'lr_decay': args.lr_decay, 'L2': args.L2, 'act_type': 'selu',
             'optim': args.optim, 'attn_type': args.attn_type, 'clip': args.clip, 'rnn_type': args.rnn_type,
             'epoch_max': args.epoch_max, 'history_mode': args.history_mode, 'model_mode': args.model_mode}
-        print('*' * 15 + 'start training' + '*' * 15)
-        print('model_mode:{} history_mode:{}'.format(parameters.model_mode, parameters.history_mode))
+        
+        # print('*' * 15 + 'start training' + '*' * 15)
+        if args.print_local == 1:
+            print('model_mode:{} history_mode:{}'.format(parameters.model_mode, parameters.history_mode))
+        
         net.train()
         
         metrics = {'train_loss': [], 'valid_loss': [], 'accuracy': [], 'valid_acc': {}}
@@ -273,14 +270,17 @@ class LocalUpdateRNN(object):
             if args.pretrain == 0:
                 # _, avg_loss = self.run_rnn(net, data_train, train_idx, 'train', lr, parameters.clip, net, optimizer, criterion, parameters.model_mode)
                 _, avg_loss = self.run_rnn(net, training_data, training_idx, 'train', lr, parameters.clip, net, optimizer, criterion, parameters.model_mode)
-                print('==>Train Epoch:{:0>2d} Loss:{:.4f} lr:{}'.format(epoch, avg_loss, lr))
+                if args.print_local == 1:
+                    print('==>Train Epoch:{:0>2d} Loss:{:.4f} lr:{}'.format(epoch, avg_loss, lr))
+        
                 metrics['train_loss'].append(avg_loss)
 
             # avg_loss, avg_acc, users_acc = self.run_rnn(net, data_test, test_idx, 'test', lr, parameters.clip, net,
             #                                      optimizer, criterion, parameters.model_mode)
             avg_loss, avg_acc, users_acc = self.run_rnn(net, testing_data, testing_idx, 'test', lr, parameters.clip, net,
                                                  optimizer, criterion, parameters.model_mode)
-            print('==>Test Acc:{:.4f} Loss:{:.4f}'.format(avg_acc, avg_loss))
+            if args.print_local == 1:
+                print('==>Test Acc:{:.4f} Loss:{:.4f}'.format(avg_acc, avg_loss))
         
             metrics['valid_loss'].append(avg_loss)
             metrics['accuracy'].append(avg_acc)
@@ -299,9 +299,12 @@ class LocalUpdateRNN(object):
                 load_epoch = np.argmax(metrics['accuracy'])
                 load_name_tmp = 'ep_' + str(load_epoch) + '.m'
                 net.load_state_dict(torch.load(SAVE_PATH + tmp_path + load_name_tmp))
-                print('load epoch={} model state'.format(load_epoch))
-            if epoch == 0:
+                if args.print_local == 1:
+                    print('load epoch={} model state'.format(load_epoch))
+            
+            if epoch == 0 and args.print_local == 1:
                 print('single epoch time cost:{}'.format(time.time() - st))
+            
             if lr <= 0.9 * 1e-5:
                 break
             if args.pretrain == 1:
